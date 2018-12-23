@@ -35,15 +35,26 @@ module.exports = (app) => {
                     sheet.addRow({date: data.date, type: data.type, value: data.value, sensor: data.sensorID});
                 });
 
-                workbook.xlsx.writeFile('./files/Datas_'+start+'_'+end+'.xlsx')
-                    .then(function(){
-                        res.download('./files/Datas_'+start+'_'+end+'.xlsx');
-                    })
-                    .catch(function(error){
-                    res.status(400).send(error);
-                });
+                if(req.query.format === 'csv'){
+                    workbook.csv.writeFile('./files/Datas_'+start+'_'+end+'.csv')
+                        .then(function(){
+                            res.download('./files/Datas_'+start+'_'+end+'.csv');
+                        })
+                        .catch(function(error){
+                            res.status(400).send(error);
+                        });
+                }
+                else {
+                    workbook.xlsx.writeFile('./files/Datas_'+start+'_'+end+'.xlsx')
+                        .then(function(){
+                            res.download('./files/Datas_'+start+'_'+end+'.xlsx');
+                        })
+                        .catch(function(error){
+                            res.status(400).send(error);
+                        });
+                }
 
-                // res.status(200).send(response.data)
+
             })
             .catch(function (error) {
                 // res.status(400).send(error.response.data.errors[0].message);
