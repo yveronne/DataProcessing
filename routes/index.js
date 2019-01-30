@@ -4,62 +4,92 @@ const Excel = require('exceljs');
 module.exports = (app) => {
 
     app.get('/datas', function (req, res) {
-        axios.get('http://localhost:3000/api/datas')
-            .then(function (response) {
-                res.status(200).send(response.data)
-            })
-            .catch(function (error) {
-                res.status(400).send(error.response.data.errors[0].message)
-            })
+        axios.get('http://localhost:3000/api/stations')
+            .then(function(response){
+                const stations = response.data;
+
+                axios.get('http://localhost:3000/api/datas')
+                    .then(function (response) {
+                        const datas = response.data;
+                        var formattedDatas = [];
+
+                        var i=0;
+                        datas.forEach(function(item){
+                            formattedDatas[i]= {};
+                            formattedDatas[i].data = item;
+                            formattedDatas[i].stationID = item.sensor.stationID;
+                            var statie = stations.find(function(station){
+                                return station.id === item.sensor.stationID;
+                            });
+                            formattedDatas[i].stationName = statie.name;
+                            i++;
+                        });
+                        res.status(200).send(formattedDatas)
+                    })
+                    .catch(function (error) {
+                        res.status(400).send(error.response.data.errors[0].message)
+                    })
+            });
+
     });
 
     app.get('/archived', function(req, res){
         const start = req.query.start;
         const end = req.query.end;
-        axios.get('http://localhost:3000/api/datasInterval?start='+ start +'&end='+ end)
-            .then(function (response) {
-                const datas = response.data;
-                const workbook = new Excel.Workbook();
-                workbook.creator = 'Weather_Station';
-                workbook.created = new Date();
-                const sheet = workbook.addWorksheet('Données météorologiques du '+start+ ' au '+end);
 
-                sheet.columns = [
-                    {header: 'Date', key: 'date', width: 20},
-                    {header: 'Type de données', key: 'type', width: 10},
-                    {header: 'Valeur', key: 'value', width: 10},
-                    {header: 'Capteur', key: 'sensor', width: 10},
-                ];
+        axios.get('http://localhost:3000/api/stations')
+            .then(function(response){
+                const stations = response.data;
 
-                datas.forEach(function(data){
-                    sheet.addRow({date: data.date, type: data.type, value: data.value, sensor: data.sensorID});
-                });
+                axios.get('http://localhost:3000/api/datasInterval?start='+ start +'&end='+ end)
+                    .then(function (response) {
+                        const datas = response.data;
+                        const workbook = new Excel.Workbook();
+                        workbook.creator = 'Weather_Station';
+                        workbook.created = new Date();
+                        const sheet = workbook.addWorksheet('Données météorologiques du '+start+ ' au '+end);
 
-                if(req.query.format === 'csv'){
-                    workbook.csv.writeFile('./files/Datas_'+start+'_'+end+'.csv')
-                        .then(function(){
-                            res.download('./files/Datas_'+start+'_'+end+'.csv');
-                        })
-                        .catch(function(error){
-                            res.status(400).send(error);
+                        sheet.columns = [
+                            {header: 'Date', key: 'date', width: 30},
+                            {header: 'Type de données', key: 'type', width: 30},
+                            {header: 'Valeur', key: 'value', width: 30},
+                            {header: 'Station', key: 'station', width: 30},
+                        ];
+
+                        datas.forEach(function(data){
+                            var statie = stations.find(function(station){
+                                return station.id === data.sensor.stationID;
+                            });
+                            sheet.addRow({date: data.date, type: data.type, value: data.value, station : statie.name});
                         });
-                }
-                else {
-                    workbook.xlsx.writeFile('./files/Datas_'+start+'_'+end+'.xlsx')
-                        .then(function(){
-                            res.download('./files/Datas_'+start+'_'+end+'.xlsx');
-                        })
-                        .catch(function(error){
-                            res.status(400).send(error);
-                        });
-                }
+
+                        if(req.query.format === 'csv'){
+                            workbook.csv.writeFile('./files/Datas_'+start+'_'+end+'.csv')
+                                .then(function(){
+                                    res.download('./files/Datas_'+start+'_'+end+'.csv');
+                                })
+                                .catch(function(error){
+                                    res.status(400).send(error);
+                                });
+                        }
+                        else {
+                            workbook.xlsx.writeFile('./files/Datas_'+start+'_'+end+'.xlsx')
+                                .then(function(){
+                                    res.download('./files/Datas_'+start+'_'+end+'.xlsx');
+                                })
+                                .catch(function(error){
+                                    res.status(400).send(error);
+                                });
+                        }
 
 
-            })
-            .catch(function (error) {
-                // res.status(400).send(error.response.data.errors[0].message);
-                res.status(400).send(error);
-            })
+                    })
+                    .catch(function (error) {
+                        // res.status(400).send(error.response.data.errors[0].message);
+                        res.status(400).send(error);
+                    })
+            });
+
     });
 
     app.post('/datas', function (req, res) { // todo validation and errors & success messages
