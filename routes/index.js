@@ -1,47 +1,29 @@
 const axios = require('axios');
 const Excel = require('exceljs');
+const dataStorageURL = "http://46.101.191.86:3000";
+const dataURL = "http://192.168.8.100:5002/data";
 
 module.exports = (app) => {
 
     app.get('/datas', function (req, res) {
-        axios.get('http://localhost:3000/api/stations')
-            .then(function(response){
-                const stations = response.data;
-
-                axios.get('http://localhost:3000/api/datas')
-                    .then(function (response) {
-                        const datas = response.data;
-                        var formattedDatas = [];
-
-                        var i=0;
-                        datas.forEach(function(item){
-                            formattedDatas[i]= {};
-                            formattedDatas[i].data = item;
-                            formattedDatas[i].stationID = item.sensor.stationID;
-                            var statie = stations.find(function(station){
-                                return station.id === item.sensor.stationID;
-                            });
-                            formattedDatas[i].stationName = statie.name;
-                            i++;
-                        });
-                        res.status(200).send(formattedDatas)
-                    })
-                    .catch(function (error) {
-                        res.status(400).send(error.response.data.errors[0].message)
-                    })
-            });
-
+        axios.get(dataStorageURL+'/api/datas')
+            .then(function (response) {
+                res.status(200).send(response.data)
+            })
+            .catch(function (error) {
+                res.status(400).send({"message" : "Une erreur est survenue"})
+            })
     });
 
     app.get('/archived', function(req, res){
         const start = req.query.start;
         const end = req.query.end;
 
-        axios.get('http://localhost:3000/api/stations')
+        axios.get(dataStorageURL+'/api/stations')
             .then(function(response){
                 const stations = response.data;
 
-                axios.get('http://localhost:3000/api/datasInterval?start='+ start +'&end='+ end)
+                axios.get(dataStorageURL+'/api/datasInterval?start='+ start +'&end='+ end)
                     .then(function (response) {
                         const datas = response.data;
                         const workbook = new Excel.Workbook();
@@ -85,92 +67,134 @@ module.exports = (app) => {
 
                     })
                     .catch(function (error) {
-                        // res.status(400).send(error.response.data.errors[0].message);
                         res.status(400).send(error);
                     })
             });
 
     });
 
-    app.post('/datas', function (req, res) { // todo validation and errors & success messages
-        const errors = [];
-        const datas = req.body;
-        datas.forEach(data => {
-
-            //Insert the datas of the station
-
-            var idStation = null;
-            var latitude = null;
-            var longitude = null;
-            var keys = Object.keys(data);  // get the keys of the json array representing the datas of the station
-            var values = Object.values(data); //get the values
-
-            for (var i = 0; i < keys.length; i++) {
-                idStation = data.id;
-                latitude = data.latitude;
-                longitude = data.longitude;
-
-                if(keys[i] !== 'id' && keys[i] !== 'date' && keys[i] !== 'latitude' && keys[i] !== 'longitude') {
-
-                    const type = keys[i];
-                    const value = values[i];
-                    const date = new Date(data.date);
-
-                    axios.get('http://localhost:3000/api/stations/' + idStation + '/sensors?type=' + type)
-                        .then(function (response) {
-
-                            const sensor = response.data;
-                            const sensorID = sensor.id;
-
-                            axios.post('http://localhost:3000/api/' + sensorID + '/datas', {
-                                type: type,
-                                value: value,
-                                sensorID: sensorID,
-                                date: date
-                            })
-                                .then(function (response) {
-
-                                })
-                                .catch(function (error) {
-                                    errors.push(error.response.data.errors[0].message);
-                                    console.log(errors);
-                                    console.log(errors.length);
-
-                                })
-                        })
-                        .catch(function (error) {
-                            errors.push(error);
-                            console.log(errors);
-
-
-                        })
+    const getDatas = () => axios.get(dataURL)
+        .then(function(response){
+            const errors = [];
+            const datas = response.data.data;
+            /*const datas = [
+                {
+                    "date" : 'February 1, 2019 16:27:00',
+                    "id" : 45,
+                    "latitude" : 24,
+                    "longitude" : 120,
+                    "temperature" : 200,
+                    "humidite" : 50,
+                    "pression" : 10,
+                    "lumiere" : 60,
+                },
+                {
+                    "date" : 'February 1, 2019 16:27:00',
+                    "id" : 1,
+                    "latitude" : 24,
+                    "longitude" : 120,
+                    "temperature" : 120,
+                    "humidite" : 40,
+                    "pression" : 50,
+                    "lumiere" : 85,
+                },
+                {
+                    "date" : 'February 1, 2019 16:27:00',
+                    "id" : 1,
+                    "latitude" : 24,
+                    "longitude" : 120,
+                    "temperature" : 110,
+                    "humidite" : 45,
+                    "pression" : 15,
+                    "lumiere" : 15,
+                },
+                {
+                    "date" : 'February 1, 2019 16:27:00',
+                    "id" : 1,
+                    "latitude" : 34,
+                    "longitude" : 150,
+                    "temperature" : 150,
+                    "humidite" : 48,
+                    "pression" : 17,
+                    "lumiere" : 10,
                 }
+            ];*/
+            console.log(datas);
+            datas.forEach(data => {
+
+                //Insert the datas of the station
+
+                var idStation = null;
+                var latitude = null;
+                var longitude = null;
+                var keys = Object.keys(data);  // get the keys of the json array representing the datas of the station
+                var values = Object.values(data); //get the values
+
+                for (var i = 0; i < keys.length; i++) {
+                    idStation = data.id;
+                    latitude = data.latitude;
+                    longitude = data.longitude;
+
+                    if(keys[i] !== 'id' && keys[i] !== 'date' && keys[i] !== 'latitude' && keys[i] !== 'longitude') {
+
+                        const type = keys[i];
+                        const value = values[i];
+                        const date = new Date(data.date);
+
+                        axios.get(dataStorageURL+'/api/stations/' + idStation + '/sensors?type=' + type)
+                            .then(function (response) {
+
+                                const sensor = response.data;
+                                const sensorID = sensor.id;
+
+                                axios.post(dataStorageURL+'/api/' + sensorID + '/datas', {
+                                    type: type,
+                                    value: value,
+                                    sensorID: sensorID,
+                                    date: new Date(date*1000)
+                                })
+                                    .then(function (response) {
+
+                                    })
+                                    .catch(function (error) {
+                                        errors.push("Erreur lors de l'enregistrement des données");
+                                        console.log(errors);
+                                        console.log(errors.length);
+
+                                    })
+                            })
+                            .catch(function (error) {
+                                errors.push(error);
+                                console.log(errors);
+
+
+                            })
+                    }
+                }
+                axios.put(dataStorageURL+'/api/stations/' + idStation, {
+                    latitude: latitude,
+                    longitude: longitude
+                })
+                    .then(function (response) {
+
+                    })
+                    .catch(function (error) {
+                        // res.status(400).send(error)
+                        errors.push("Une erreur est survenue lors de la modification de la station");
+                        console.log(errors);
+
+                    })
+            });
+            if(errors.length > 0){
+                console.log(errors);
             }
-            axios.put('http://localhost:3000/api/stations/' + idStation, {
-                latitude: latitude,
-                longitude: longitude
-            })
-                .then(function (response) {
-
-                })
-                .catch(function (error) {
-                    // res.status(400).send(error)
-                    errors.push(error.response.data.errors[0].message);
-                    console.log(errors);
-
-                })
-        });
-        if(errors.length > 0){
-            res.status(400).send(errors);
-        }
-        else res.status(200).send({
-            message: "Les données ont été correctement insérées"
-        })
-
+            else console.log("Ok!")
     });
 
+    setInterval(getDatas, 2000);
+
     app.get('/forecastdatas', function (req, res) {
-        axios.get('http://localhost:3000/api/forecastdatas')
+        axios.get(dataStorageURL+'/api/forecastdatas')
             .then(function (response) {
                 res.status(200).send(response.data)
             })
@@ -178,6 +202,5 @@ module.exports = (app) => {
                 res.status(400).send(error.response.data.errors[0].message)
             })
     });
-
 
 };
