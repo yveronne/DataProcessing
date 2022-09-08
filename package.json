@@ -10,7 +10,7 @@
     "axios": "^0.19.0",
     "cookie-parser": "~1.4.3",
     "debug": "~2.6.9",
-    "exceljs": "^1.6.3",
+    "exceljs": "^1.15.0",
     "express": "~4.16.0",
     "fstream": "^1.0.12",
     "http-errors": "~1.6.2",
